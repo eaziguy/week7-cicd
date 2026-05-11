@@ -1,4 +1,4 @@
-name: Deploy App
+name: CI/CD Pipeline
 
 on:
   push:
@@ -13,6 +13,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+
+    - name: Build Docker image
+      run: docker build -t eaziguy/week7-app:v1 ./app
+
+    - name: Push image to Docker Hub
+      run: docker push eaziguy/week7-app:v1
+
     - name: Deploy to EC2
       uses: appleboy/ssh-action@master
       with:
@@ -20,9 +32,6 @@ jobs:
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd week7-cicd/app
-          git pull
-          sudo docker stop $(sudo docker ps -q) || true
-          sudo docker rm $(sudo docker ps -aq) || true
-          sudo docker build -t week7-app .
-          sudo docker run -d -p 8080:80 week7-app
+          sudo docker pull eaziguy/week7-app:v1
+          sudo docker rm -f $(sudo docker ps -aq) || true
+          sudo docker run -d -p 8080:80 eaziguy/week7-app:v1
